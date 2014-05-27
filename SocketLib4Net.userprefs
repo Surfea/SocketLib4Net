@@ -2,7 +2,7 @@
   <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
   <MonoDevelop.Ide.Workbench ActiveDocument="SocketLib/SocketClient.cs">
     <Files>
-      <File FileName="SocketLib/SocketClient.cs" Line="77" Column="3" />
+      <File FileName="SocketLib/SocketClient.cs" Line="36" Column="17" />
     </Files>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>

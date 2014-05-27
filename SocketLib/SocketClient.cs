@@ -2,6 +2,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 
 namespace Surfea.Net
 {
@@ -11,9 +12,35 @@ namespace Surfea.Net
 	/// </summary>
 	public class SocketClient
 	{
+		#region Member Variables
+
 		// Underlying socket
 		private Socket _socket;
 		private IPEndPoint _server;
+		private bool _listening = false;
+		private Thread _listenThread;
+		private byte[] _recv = new byte[4096];
+
+		#endregion
+
+		#region Events
+
+		public event EventHandler ByteEvent;
+		public event EventHandler MessageEvent;
+
+		public virtual void OnByte(ByteEventArgs e)
+		{
+			if (ByteEvent != null)
+				ByteEvent (this, e);
+		}
+
+		public virtual void OnMessage(MessageEventArgs e)
+		{
+			if (MessageEvent != null)
+				MessageEvent (this, e);
+		}
+
+		#endregion
 
 		#region Constructors
 
@@ -53,6 +80,7 @@ namespace Surfea.Net
 		{
 			_socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 			_server = new IPEndPoint (ipAddress, port);
+
 		}
 
 		#endregion
@@ -68,6 +96,12 @@ namespace Surfea.Net
 			} catch (Exception e) {
 				Console.WriteLine("Unexpected exception : {0}", e.ToString());
 			}
+
+			// Start the listening thread
+			_listening = true;
+			ThreadStart listenDelegate = new ThreadStart (Listen);
+			_listenThread = new Thread (listenDelegate);
+			_listenThread.Start ();
 		}
 
 		public void Send(byte[] arr)
@@ -81,10 +115,69 @@ namespace Surfea.Net
 			Send (byteMsg);
 		}
 
+		/// <summary>
+		/// Close the socket.
+		/// </summary>
 		public void Close()
 		{
 			_socket.Shutdown(SocketShutdown.Both);
 			_socket.Close();
 		}
+
+		/// <summary>
+		/// Routine to listen for output from the server and generate events.
+		/// </summary>
+		public void Listen()
+		{
+			while (_listening) {
+				int numBytes = _socket.Receive (_recv);
+
+				if (numBytes == 0) {
+					Console.WriteLine ("Client was disconnected");
+
+					// TODO: Fire disconnected event
+				}
+
+				byte[] receivedBytes = new byte[numBytes];
+				Array.Copy (_recv, receivedBytes, numBytes);
+
+				// Fire messages
+				OnByte (new ByteEventArgs (receivedBytes));
+				OnMessage (new MessageEventArgs (Encoding.ASCII.GetString (receivedBytes, 0, numBytes)));
+
+				// Clear receive buffer
+				_recv = new byte[4096];
+			}
+		}
 	}
+
+	#region Events
+
+	/// <summary>
+	/// Event arguments for passing back byte arrays.
+	/// </summary>
+	public class ByteEventArgs : EventArgs
+	{
+		public ByteEventArgs(byte[] bytes)
+		{
+			this.Bytes = bytes;
+		}
+
+		public byte[] Bytes { get; private set; }
+	}
+
+	/// <summary>
+	/// Event arguments for passing back string messages.
+	/// </summary>
+	public class MessageEventArgs : EventArgs
+	{
+		public MessageEventArgs(string msg)
+		{
+			this.Message = msg;
+		}
+
+		public string Message { get; private set; }
+	}
+
+	#endregion
 }
