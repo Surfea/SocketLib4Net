@@ -22,6 +22,9 @@ namespace Surfea.Net
 		private byte[] _recv = new byte[4096];
 		protected const int CONNECT_TIMEOUT = 5000; // ms
 
+		// Exposed Properties
+		public bool Connected { get; private set; }
+
 		#endregion
 
 		#region Events
@@ -89,29 +92,33 @@ namespace Surfea.Net
 			_socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 			_server = new IPEndPoint (ipAddress, port);
 
+			Connected = false;
 		}
 
 		#endregion
 
-		public void ConnectB()
-		{
-			try {
-				_socket.Connect(_server);
+//		public void ConnectB()
+//		{
+//			try {
+//				_socket.Connect(_server);
+//
+//				Console.WriteLine("Socket connected to {0}", _socket.RemoteEndPoint.ToString());
+//			} catch (SocketException se) {
+//				Console.WriteLine("SocketException : {0}",se.ToString());
+//			} catch (Exception e) {
+//				Console.WriteLine("Unexpected exception : {0}", e.ToString());
+//			}
+//
+//			// Start the listening thread
+//			_listening = true;
+//			ThreadStart listenDelegate = new ThreadStart (Listen);
+//			_listenThread = new Thread (listenDelegate);
+//			_listenThread.Start ();
+//		}
 
-				Console.WriteLine("Socket connected to {0}", _socket.RemoteEndPoint.ToString());
-			} catch (SocketException se) {
-				Console.WriteLine("SocketException : {0}",se.ToString());
-			} catch (Exception e) {
-				Console.WriteLine("Unexpected exception : {0}", e.ToString());
-			}
-
-			// Start the listening thread
-			_listening = true;
-			ThreadStart listenDelegate = new ThreadStart (Listen);
-			_listenThread = new Thread (listenDelegate);
-			_listenThread.Start ();
-		}
-
+		/// <summary>
+		/// Connect to the socket using the default timeout of 5000ms (CONNECT_TIMEOUT).
+		/// </summary>
 		public void Connect()
 		{
 			//IAsyncResult result = _socket.BeginConnect( _server, port, null, null );
@@ -119,11 +126,17 @@ namespace Surfea.Net
 
 		}
 
+		/// <summary>
+		/// Connect to the socket using the specified timeout (ms).
+		/// </summary>
+		/// <param name="timeout">Timeout (ms).</param>
 		public void Connect(int timeout)
 		{
 			IAsyncResult result = _socket.BeginConnect(_server, null, null);
 
 			bool success = result.AsyncWaitHandle.WaitOne( CONNECT_TIMEOUT, true );
+
+			Connected = true;
 
 			if ( !success )
 			{
@@ -132,11 +145,19 @@ namespace Surfea.Net
 			}
 		}
 
+		/// <summary>
+		/// Send the specified byte arr over the socket.
+		/// </summary>
+		/// <param name="arr">Arr.</param>
 		public void Send(byte[] arr)
 		{
 			_socket.Send(arr);
 		}
 
+		/// <summary>
+		/// Send the specified string over the socket.
+		/// </summary>
+		/// <param name="msg">Message.</param>
 		public void Send(String msg)
 		{
 			byte[] byteMsg = Encoding.ASCII.GetBytes(msg);
@@ -162,6 +183,8 @@ namespace Surfea.Net
 
 				if (numBytes == 0) {
 					Console.WriteLine ("Client was disconnected");
+
+					Connected = false;
 
 					// TODO: Fire disconnected event
 					OnDisconnected (EventArgs.Empty);
