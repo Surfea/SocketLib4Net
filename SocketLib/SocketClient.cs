@@ -14,12 +14,13 @@ namespace Surfea.Net
 	{
 		#region Member Variables
 
-		// Underlying socket
+		// Underlying socket params
 		private Socket _socket;
 		private IPEndPoint _server;
 		private bool _listening = false;
 		private Thread _listenThread;
 		private byte[] _recv = new byte[4096];
+		protected const int CONNECT_TIMEOUT = 5000; // ms
 
 		#endregion
 
@@ -27,6 +28,7 @@ namespace Surfea.Net
 
 		public event EventHandler ByteEvent;
 		public event EventHandler MessageEvent;
+		public event EventHandler DisconnectedEvent;
 
 		public virtual void OnByte(ByteEventArgs e)
 		{
@@ -38,6 +40,12 @@ namespace Surfea.Net
 		{
 			if (MessageEvent != null)
 				MessageEvent (this, e);
+		}
+
+		public virtual void OnDisconnected(EventArgs e)
+		{
+			if (DisconnectedEvent != null)
+				DisconnectedEvent (this, e);
 		}
 
 		#endregion
@@ -107,14 +115,18 @@ namespace Surfea.Net
 		public void Connect()
 		{
 			//IAsyncResult result = _socket.BeginConnect( _server, port, null, null );
+			Connect (CONNECT_TIMEOUT);
+
+		}
+
+		public void Connect(int timeout)
+		{
 			IAsyncResult result = _socket.BeginConnect(_server, null, null);
 
-			bool success = result.AsyncWaitHandle.WaitOne( 5000, true );
+			bool success = result.AsyncWaitHandle.WaitOne( CONNECT_TIMEOUT, true );
 
 			if ( !success )
 			{
-				// NOTE, MUST CLOSE THE SOCKET
-
 				_socket.Close();
 				throw new TimeoutException();
 			}
@@ -152,6 +164,9 @@ namespace Surfea.Net
 					Console.WriteLine ("Client was disconnected");
 
 					// TODO: Fire disconnected event
+					OnDisconnected (EventArgs.Empty);
+
+					// Need to close down socket?
 				}
 
 				byte[] receivedBytes = new byte[numBytes];
