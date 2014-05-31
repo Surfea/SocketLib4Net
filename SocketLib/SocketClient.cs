@@ -85,7 +85,7 @@ namespace Surfea.Net
 
 		#endregion
 
-		public void Connect()
+		public void ConnectB()
 		{
 			try {
 				_socket.Connect(_server);
@@ -102,6 +102,22 @@ namespace Surfea.Net
 			ThreadStart listenDelegate = new ThreadStart (Listen);
 			_listenThread = new Thread (listenDelegate);
 			_listenThread.Start ();
+		}
+
+		public void Connect()
+		{
+			//IAsyncResult result = _socket.BeginConnect( _server, port, null, null );
+			IAsyncResult result = _socket.BeginConnect(_server, null, null);
+
+			bool success = result.AsyncWaitHandle.WaitOne( 5000, true );
+
+			if ( !success )
+			{
+				// NOTE, MUST CLOSE THE SOCKET
+
+				_socket.Close();
+				throw new TimeoutException();
+			}
 		}
 
 		public void Send(byte[] arr)
