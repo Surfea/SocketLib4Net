@@ -134,7 +134,7 @@ namespace Surfea.Net
 		{
 			IAsyncResult result = _socket.BeginConnect(_server, null, null);
 
-			bool success = result.AsyncWaitHandle.WaitOne( CONNECT_TIMEOUT, true );
+			bool success = result.AsyncWaitHandle.WaitOne( timeout, true );
 
 			Connected = true;
 
@@ -143,6 +143,12 @@ namespace Surfea.Net
 				_socket.Close();
 				throw new TimeoutException();
 			}
+
+			// Start the listening thread
+			_listening = true;
+			ThreadStart listenDelegate = new ThreadStart (Listen);
+			_listenThread = new Thread (listenDelegate);
+			_listenThread.Start ();
 		}
 
 		/// <summary>
